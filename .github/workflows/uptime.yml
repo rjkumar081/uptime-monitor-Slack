@@ -13,6 +13,7 @@ jobs:
       - name: Check Website Status and Notify Slack
         run: |
           SITE_URL="https://cinepolis.com/in"
+          TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
