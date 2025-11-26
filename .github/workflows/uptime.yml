@@ -2,7 +2,7 @@ name: Website Uptime Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/5 * * * *"   # har 5 minute
   workflow_dispatch:
 
 jobs:
@@ -47,6 +47,6 @@ Time: $TIMESTAMP"
 
           payload=$(printf '{"text":"%s"}' "$MESSAGE")
 
-          curl -X POST -H "Content-type:application/json" \
+          curl -X POST -H "Content-type: application/json" \
             --data "$payload" \
             "$SLACK_WEBHOOK_URL"
