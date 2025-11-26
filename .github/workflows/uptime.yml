@@ -2,8 +2,8 @@ name: Website Uptime Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
-  workflow_dispatch:
+    - cron: "*/5 * * * *"   # har 5 minute
+  workflow_dispatch:        # manually run karne ke liye
 
 jobs:
   check-website:
@@ -11,28 +11,37 @@ jobs:
 
     steps:
       - name: Check Website Status and Notify Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          # YAHAN APNI SITE URL DAALO
           SITE_URL="https://cinepolis.com/in"
 
-          TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
+          # Time (IST)
+          TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
+          # Browser jaisa request bhejna (bot block avoid)
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
             --max-time 15 \
             "$SITE_URL")
 
           if [ "$STATUS" = "000" ] || [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
-            MESSAGE="🚨 *CinePolis- Website DOWN*
-URL: $SITE_URL
-Status: HTTP $STATUS
-Time: $TIMESTAMP"
+            EMOJI="🚨"
+            STATE_TEXT="DOWN"
           else
-            MESSAGE="✅ *CinePolis- Website UP*
-URL: $SITE_URL
-Status: HTTP $STATUS
-Time: $TIMESTAMP"
+            EMOJI="✅"
+            STATE_TEXT="UP"
           fi
 
+          MESSAGE="$EMOJI Website $STATE_TEXT
+URL: $SITE_URL
+Status: HTTP $STATUS
+Time: $TIMESTAMP"
+
+          # JSON payload safe tarike se banao
+          payload=$(printf '{"text":"%s"}' "$MESSAGE")
+
           curl -X POST -H "Content-type: application/json" \
-          --data "{\"text\":\"$MESSAGE\"}" \
-          "${{ secrets.SLACK_WEBHOOK_URL }}"
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
