@@ -21,9 +21,9 @@ jobs:
             "$SITE_URL")
 
           if [ "$STATUS" = "000" ] || [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
-            MESSAGE="🚨 Website DOWN\nURL: $SITE_URL\nStatus: HTTP $STATUS\Time: $TIMESTAMP"
+            MESSAGE="🚨 Website DOWN\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
           else
-            MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $STATUS\Time: $TIMESTAMP"
+            MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
           fi
 
           curl -X POST -H "Content-type: application/json" \
