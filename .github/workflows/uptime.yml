@@ -2,30 +2,78 @@ name: Website Uptime Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/5 * * * *"   # har 5 minute
   workflow_dispatch:
 
 jobs:
   check-website:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write      # status.json commit karne ke liye
 
     steps:
-      - name: Check Website Status and Notify Slack
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Website Status, Notify Slack & Update status.json
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           SITE_URL="https://cinepolis.com/in"
+
+          # Time (IST)
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
+          # Request like a browser
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
             --max-time 15 \
             "$SITE_URL")
 
           if [ "$STATUS" = "000" ] || [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
-            MESSAGE="🚨 Website DOWN\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
+            EMOJI="🚨"
+            STATE_TEXT="down"
+            SLACK_TEXT="🚨 Website DOWN
+URL: $SITE_URL
+Status: HTTP $STATUS
+Time: $TIMESTAMP"
           else
-            MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
+            EMOJI="✅"
+            STATE_TEXT="up"
+            SLACK_TEXT="✅ Website UP
+URL: $SITE_URL
+Status: HTTP $STATUS
+Time: $TIMESTAMP"
           fi
 
+          echo "Status: $STATE_TEXT ($STATUS) at $TIMESTAMP"
+
+          # --- Slack alert ---
+          payload=$(printf '{"text":"%s"}' "$SLACK_TEXT")
           curl -X POST -H "Content-type: application/json" \
-          --data "{\"text\":\"$MESSAGE\"}" \
-          "${{ secrets.SLACK_WEBHOOK_URL }}"
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
+
+          # --- status.json file dashboard ke liye ---
+          cat > status.json <<EOF
+{
+  "siteUrl": "$SITE_URL",
+  "status": "$STATE_TEXT",
+  "httpCode": "$STATUS",
+  "checkedAt": "$TIMESTAMP",
+  "emoji": "$EMOJI",
+  "slackMessage": $(printf '%s\n' "$SLACK_TEXT" | python -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()))')
+}
+EOF
+
+      - name: Commit status.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add status.json
+          if git diff --cached --quiet; then
+            echo "No changes in status.json"
+          else
+            git commit -m "Update status.json"
+            git push
+          fi
