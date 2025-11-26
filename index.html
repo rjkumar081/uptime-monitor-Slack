@@ -31,7 +31,7 @@
       justify-content: space-between;
       gap: 14px;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 10px;
     }
     @media (max-width: 720px) {
       .header { flex-direction: column; align-items: flex-start; }
@@ -100,6 +100,33 @@
       box-shadow: 0 12px 24px rgba(37,99,235,0.7);
       background: rgba(37,99,235,1);
     }
+
+    /* 🔴 Blinking warning banner */
+    .warning-banner {
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      background: rgba(239,68,68,0.14);
+      border: 1px solid rgba(248,113,113,0.7);
+      font-size: 11px;
+      color: #fecaca;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      animation: warn-blink 1.2s infinite;
+    }
+    .warning-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #ef4444;
+      box-shadow: 0 0 0 4px rgba(248,113,113,0.4);
+    }
+    @keyframes warn-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+
     .status-grid {
       display: grid;
       grid-template-columns: minmax(0,2.1fr) minmax(0,1.1fr);
@@ -212,6 +239,17 @@
     }
     .history-item span.label { color:#9ca3af; }
     .history-item span.value { color:#e5e7eb; font-weight:500;}
+
+    /* Graph canvas */
+    #uptimeChart {
+      width: 100%;
+      height: 80px;
+      margin-top: 8px;
+      background: rgba(15,23,42,0.98);
+      border-radius: 10px;
+      border: 1px solid rgba(55,65,81,0.95);
+    }
+
     .footer {
       margin-top: 10px;
       font-size: 10px;
@@ -242,6 +280,12 @@
           🔄 Refresh Now
         </button>
       </div>
+    </div>
+
+    <!-- 🔴 Blinking warning strip -->
+    <div id="warningBanner" class="warning-banner">
+      <span class="warning-dot"></span>
+      <span>Website seems <strong>DOWN</strong>. Check GitHub Actions logs / Slack alerts.</span>
     </div>
 
     <div class="status-grid">
@@ -299,6 +343,10 @@
           <span class="label">Slack Message Preview</span>
           <span id="snapshotSlack" class="value" style="max-width: 180px; text-align: right; white-space: pre-line;"></span>
         </div>
+
+        <!-- 📈 Uptime graph -->
+        <div style="margin-top: 6px; font-size: 11px; color:#9ca3af;">Session Uptime (UP = top, DOWN = bottom)</div>
+        <canvas id="uptimeChart"></canvas>
       </div>
     </div>
 
@@ -323,6 +371,40 @@
     const snapshotSlack = document.getElementById("snapshotSlack");
 
     const refreshBtn = document.getElementById("refreshBtn");
+    const warningBanner = document.getElementById("warningBanner");
+    const uptimeCanvas = document.getElementById("uptimeChart");
+    const ctx = uptimeCanvas.getContext ? uptimeCanvas.getContext("2d") : null;
+
+    let lastState = null;
+    const history = [];
+    const MAX_POINTS = 50;
+
+    // 🔊 Simple beep using Web Audio API when state changes to DOWN
+    let audioCtx = null;
+    function playDownBeep() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = "square";
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (e) {
+        // Ignore audio errors (e.g. browser autoplay policy)
+      }
+    }
 
     function setStatusPill(state) {
       statusPill.classList.remove("up", "down", "unknown");
@@ -336,6 +418,51 @@
         statusPill.classList.add("unknown");
         statusPillText.textContent = "Unknown";
       }
+    }
+
+    function recordHistory(state) {
+      const value = state === "up" ? 1 : state === "down" ? 0 : 0.5;
+      const now = Date.now();
+      history.push({ t: now, v: value });
+      if (history.length > MAX_POINTS) history.shift();
+      drawChart();
+    }
+
+    function drawChart() {
+      if (!ctx || history.length === 0) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      const cssWidth = uptimeCanvas.clientWidth;
+      const cssHeight = uptimeCanvas.clientHeight;
+
+      uptimeCanvas.width = cssWidth * dpr;
+      uptimeCanvas.height = cssHeight * dpr;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cssWidth, cssHeight);
+
+      // background line in middle
+      ctx.strokeStyle = "rgba(75,85,99,0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, cssHeight * 0.5);
+      ctx.lineTo(cssWidth, cssHeight * 0.5);
+      ctx.stroke();
+
+      const n = history.length;
+      if (n === 0) return;
+
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1 || 1)) * cssWidth;
+        const v = history[i].v; // 0–1
+        const y = cssHeight - v * (cssHeight - 6) - 3;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "#22c55e";
+      ctx.stroke();
     }
 
     async function loadStatus() {
@@ -357,6 +484,18 @@
         snapshotEmoji.textContent = data.emoji || "—";
         snapshotSlack.textContent = (data.slackMessage || "—").slice(0, 140);
 
+        // 🔴 Warning banner visibility
+        warningBanner.style.display = state === "down" ? "flex" : "none";
+
+        // 🔊 Sound only on transition: not-down -> down
+        if (lastState !== "down" && state === "down") {
+          playDownBeep();
+        }
+        lastState = state;
+
+        // 📈 Record for graph
+        recordHistory(state);
+
         if (state === "up") {
           headline.textContent = "All systems operational";
           description.textContent = "Last check reported UP from your GitHub Action monitor.";
@@ -369,6 +508,7 @@
         }
       } catch (err) {
         setStatusPill("unknown");
+        warningBanner.style.display = "none";
         headline.textContent = "Unable to load status.json";
         description.textContent = "Make sure your GitHub Action created status.json in the repo root. Error: " + err.message;
         metricUrl.textContent = "—";
@@ -377,6 +517,8 @@
         snapshotStatus.textContent = "—";
         snapshotEmoji.textContent = "—";
         snapshotSlack.textContent = "—";
+        recordHistory("unknown");
+        lastState = "unknown";
       }
     }
 
