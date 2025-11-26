@@ -14,8 +14,7 @@ jobs:
         run: |
           SITE_URL="https://cinepolis.com/in"
 
-                    TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
-
+          TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
@@ -23,9 +22,15 @@ jobs:
             "$SITE_URL")
 
           if [ "$STATUS" = "000" ] || [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
-            MESSAGE="🚨 Website DOWN\nURL: $SITE_URL\nStatus: HTTP $STATUS"
+            MESSAGE="🚨 *CinePolis- Website DOWN*
+URL: $SITE_URL
+Status: HTTP $STATUS
+Time: $TIMESTAMP"
           else
-            MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $STATUS"
+            MESSAGE="✅ *CinePolis- Website UP*
+URL: $SITE_URL
+Status: HTTP $STATUS
+Time: $TIMESTAMP"
           fi
 
           curl -X POST -H "Content-type: application/json" \
