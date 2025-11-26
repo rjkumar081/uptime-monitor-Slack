@@ -9,7 +9,7 @@ jobs:
   check-website:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # status.json commit karne ke liye zaroori
+      contents: write   # status.json commit karne ke liye
 
     steps:
       - name: Checkout repository
@@ -37,21 +37,20 @@ jobs:
             MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
           fi
 
-          # ---- Slack Alert (same as before) ----
+          # ---- Slack Alert (tumhara original logic) ----
           curl -X POST -H "Content-type: application/json" \
-          --data "{\"text\":\"$MESSAGE\"}" \
-          "$SLACK_WEBHOOK_URL"
+            --data "{\"text\":\"$MESSAGE\"}" \
+            "$SLACK_WEBHOOK_URL"
 
-          # ---- status.json file dashboard ke liye ----
-          cat > status.json <<EOF
-{
-  "siteUrl": "$SITE_URL",
-  "status": "$STATE_TEXT",
-  "httpCode": "$STATUS",
-  "checkedAt": "$TIMESTAMP",
-  "emoji": "$EMOJI"
-}
-EOF
+          # ---- status.json generate (NO heredoc, NO YAML error) ----
+          printf '%s\n' \
+            "{" \
+            "  \"siteUrl\": \"$SITE_URL\"," \
+            "  \"status\": \"$STATE_TEXT\"," \
+            "  \"httpCode\": \"$STATUS\"," \
+            "  \"checkedAt\": \"$TIMESTAMP\"," \
+            "  \"emoji\": \"$EMOJI\"" \
+            "}" > status.json
 
       - name: Commit status.json
         run: |
