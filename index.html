@@ -5,16 +5,11 @@
   <title>Uptime Monitor</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: radial-gradient(circle at top, #14263f 0, #050814 55%, #02040a 100%);
       color: #f9fbff;
       display: flex;
@@ -35,540 +30,163 @@
       border: 1px solid rgba(59, 130, 246, 0.28);
     }
 
-    .header-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-
-    .title {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      background: rgba(16, 185, 129, 0.12);
-      color: #6ee7b7;
-      border: 1px solid rgba(16, 185, 129, 0.55);
-      text-transform: uppercase;
-    }
-
-    .pill-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
-    }
-
-    .subtitle {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 14px;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 500;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(34, 197, 94, 0.55);
-      color: #bbf7d0;
-      margin-bottom: 14px;
-      gap: 6px;
-    }
-
-    .chip-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 999px;
-      background: #16a34a;
-      box-shadow: 0 0 10px rgba(22, 163, 74, 0.9);
-    }
-
-    .refresh-row {
-      display: flex;
-      justify-content: center;
-      margin-bottom: 18px;
-    }
-
-    .btn-primary {
-      border: none;
-      outline: none;
-      cursor: pointer;
-      padding: 10px 22px;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 13px;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #eff6ff;
-      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.55);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-primary:active {
-      transform: translateY(1px);
-      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.5);
-    }
-
-    .section-title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .section-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #9ca3af;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-    }
-
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 9px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 600;
-      background: rgba(5, 46, 22, 0.96);
-      border: 1px solid rgba(34, 197, 94, 0.7);
-      color: #86efac;
-    }
-    .status-chip.down {
-      background: rgba(127, 29, 29, 0.96);
-      border-color: rgba(248, 113, 113, 0.9);
-      color: #fecaca;
-    }
-
-    .status-led {
-      width: 11px;
-      height: 11px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 16px rgba(34, 197, 94, 1);
-      position: relative;
-    }
-    .status-led::after {
-      content: "";
-      position: absolute;
-      inset: -4px;
-      border-radius: inherit;
-      border: 1px solid rgba(22, 163, 74, 0.7);
-      opacity: 0.75;
-      animation: pulse 1.4s ease-out infinite;
-    }
-    .status-led.down {
-      background: #ef4444;
-      box-shadow: 0 0 16px rgba(248, 113, 113, 1);
-    }
-    .status-led.down::after {
-      border-color: rgba(248, 113, 113, 0.9);
-    }
-
-    @keyframes pulse {
-      0%   { transform: scale(0.85); opacity: 0.9; }
-      100% { transform: scale(1.4); opacity: 0; }
-    }
-
-    .headline {
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 14px;
-    }
-
-    .headline span {
-      font-weight: 400;
-      color: #9ca3af;
-    }
-
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-
-    .status-card {
-      background: rgba(15, 23, 42, 0.85);
-      border-radius: 14px;
-      padding: 10px 11px;
-      border: 1px solid rgba(31, 41, 55, 0.9);
-    }
-
-    .metric-label {
-      font-size: 11px;
-      color: #6b7280;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-
-    .metric-value {
-      font-size: 13px;
-      font-weight: 600;
-      color: #e5e7eb;
-      line-height: 1.3;
-    }
-
-    .metric-value.url {
-      font-size: 11px;
-      font-weight: 500;
-      color: #bfdbfe;
-      word-break: break-all;
-      overflow-wrap: anywhere;
-    }
-
-    .metric-sub {
-      font-size: 10px;
-      color: #6b7280;
-      margin-top: 2px;
-    }
-
-    .note {
-      font-size: 11px;
-      color: #6b7280;
-      margin-bottom: 16px;
-    }
-
-    .snapshot-card {
-      margin-top: 4px;
-      padding-top: 14px;
-      border-top: 1px dashed rgba(55, 65, 81, 0.9);
-    }
-
-    .snapshot-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .snapshot-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: #9ca3af;
-    }
-
-    .snapshot-row strong {
-      color: #e5e7eb;
-      font-weight: 600;
-    }
-
-    .toggle {
-      width: 33px;
-      height: 18px;
-      border-radius: 999px;
-      background: rgba(22, 163, 74, 0.15);
-      border: 1px solid rgba(22, 163, 74, 0.7);
-      display: flex;
-      align-items: center;
-      padding: 2px;
-      justify-content: flex-end;
-    }
-
-    .toggle-knob {
-      width: 13px;
-      height: 13px;
-      border-radius: 999px;
-      background: #22c55e;
-      box-shadow: 0 0 8px rgba(34, 197, 94, 1);
-    }
-
     .sparkline-shell {
       margin-top: 10px;
       height: 80px;
       border-radius: 12px;
       border: 1px solid rgba(31, 41, 55, 0.95);
       background: radial-gradient(circle at top, #052e16, #020617);
-      overflow: hidden;
       position: relative;
+      overflow: hidden;
     }
 
     .sparkline-line {
       position: absolute;
       left: 0;
       right: 0;
-      top: 16px;
       height: 2px;
-      background: linear-gradient(90deg, #22c55e, #4ade80);
-      box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+      transition: 0.4s ease;
     }
 
     .sparkline-label {
       position: absolute;
       bottom: 3px;
       left: 10px;
-      font-size: 9px;
+      font-size: 10px;
       color: #6b7280;
     }
 
-    @media (max-width: 640px) {
-      .page {
-        padding: 10px;
-      }
-
-      .card {
-        padding: 14px 12px;
-        border-radius: 16px;
-      }
-
-      .header-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-      }
-
-      .title {
-        font-size: 18px;
-      }
-
-      .subtitle {
-        font-size: 11px;
-      }
-
-      .status-grid,
-      .snapshot-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .headline {
-        font-size: 18px;
-      }
-
-      .metric-value {
-        font-size: 12px;
-      }
-
-      .metric-value.url {
-        font-size: 11px;
-      }
-
-      .section-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .sparkline-shell {
-        height: 70px;
-      }
+    .status-chip {
+      display: flex;
+      gap: 6px;
+      align-items: center;
     }
+
+    .status-led {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+    }
+
+    .status-led.down {
+      background:#ef4444;
+      box-shadow:0 0 10px #ef4444;
+    }
+
   </style>
 </head>
 <body>
-  <main class="page">
-    <section class="card">
-      <div class="header-row">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <div class="title">Uptime Monitor</div>
-          <div class="pill">
-            <span class="pill-dot"></span>
-            GitHub Actions + Slack
-          </div>
-        </div>
-      </div>
+<main class="page">
+<section class="card">
 
-      <p class="subtitle">
-        Last status is pulled from <code>status.json</code> generated by your GitHub Action.
-      </p>
+<h2>Uptime Monitor</h2>
+<p>Live data from status.json</p>
 
-      <div class="chip">
-        <span class="chip-dot"></span>
-        Connected to GitHub status.json
-      </div>
+<div class="status-chip">
+  <div class="status-led" id="statusLed"></div>
+  <strong id="statusText">LOADING</strong>
+</div>
 
-      <div class="refresh-row">
-        <button class="btn-primary" id="refreshBtn">
-          🔁 Refresh Now
-        </button>
-      </div>
+<p id="headline">Waiting for data...</p>
 
-      <!-- CURRENT STATUS -->
-      <div class="section-title-row">
-        <div class="section-title">Current Status</div>
-        <div class="status-chip" id="statusChip">
-          <span class="status-led" id="statusLed"></span>
-          <span id="statusText">UP</span>
-        </div>
-      </div>
+<p><strong>URL:</strong> <span id="targetUrl">—</span></p>
+<p><strong>HTTP:</strong> <span id="httpCode">—</span></p>
+<p><strong>Checked:</strong> <span id="lastChecked">—</span></p>
 
-      <h2 class="headline" id="headline">
-        All systems operational <span>(from latest GitHub Action check)</span>
-      </h2>
+<hr style="margin:15px 0">
 
-      <div class="status-grid">
-        <div class="status-card">
-          <div class="metric-label">Target URL</div>
-          <div class="metric-value url" id="targetUrl">
-            —
-          </div>
-          <div class="metric-sub">From status.json</div>
-        </div>
+<div><strong>Snapshot</strong></div>
+<p>Status: <span id="snapStatus">—</span></p>
+<p>Emoji: <span id="snapEmoji">—</span></p>
+<p>Message: <span id="snapSlack">—</span></p>
 
-        <div class="status-card">
-          <div class="metric-label">HTTP Code</div>
-          <div class="metric-value" id="httpCode">—</div>
-          <div class="metric-sub">From last check</div>
-        </div>
+<div class="sparkline-shell">
+  <div class="sparkline-line" id="sparkLine"></div>
+  <div class="sparkline-label" id="sparkLabel">Waiting...</div>
+</div>
 
-        <div class="status-card">
-          <div class="metric-label">Last Checked</div>
-          <div class="metric-value" id="lastChecked">
-            —
-          </div>
-          <div class="metric-sub">IST time recorded by Action</div>
-        </div>
-      </div>
+<button id="refreshBtn">Refresh</button>
 
-      <p class="note">
-        Auto refresh every <strong>2 seconds</strong> while this page is open.
-        You can also tap “Refresh Now”.
-      </p>
+</section>
+</main>
 
-      <!-- SNAPSHOT -->
-      <div class="snapshot-card">
-        <div class="section-title-row" style="margin-bottom:10px">
-          <div class="section-title">Snapshot</div>
-        </div>
+<script>
+const targetUrlEl = document.getElementById("targetUrl");
+const httpCodeEl = document.getElementById("httpCode");
+const lastCheckedEl = document.getElementById("lastChecked");
 
-        <div class="snapshot-grid">
-          <div class="status-card">
-            <div class="metric-label">Status</div>
-            <div class="metric-value" id="snapStatus">—</div>
-          </div>
-          <div class="status-card">
-            <div class="metric-label">Emoji / Alert</div>
-            <div class="metric-value" id="snapEmoji">—</div>
-          </div>
-          <div class="status-card">
-            <div class="metric-label">Slack Message Preview</div>
-            <div class="metric-value" id="snapSlack">—</div>
-          </div>
-        </div>
+const statusLedEl = document.getElementById("statusLed");
+const statusTextEl = document.getElementById("statusText");
+const headlineEl = document.getElementById("headline");
 
-        <div class="snapshot-row">
-          <span>Session Uptime (UP = top, DOWN = bottom)</span>
-          <span><strong>Live</strong></span>
-        </div>
+const snapStatusEl = document.getElementById("snapStatus");
+const snapEmojiEl = document.getElementById("snapEmoji");
+const snapSlackEl = document.getElementById("snapSlack");
 
-        <div class="sparkline-shell">
-          <div class="sparkline-line" id="sparkLine"></div>
-          <div class="sparkline-label" id="sparkLabel">Last checks</div>
-        </div>
-      </div>
-    </section>
-  </main>
+const sparkLine = document.getElementById("sparkLine");
+const sparkLabel = document.getElementById("sparkLabel");
+const refreshBtn = document.getElementById("refreshBtn");
 
-  <script>
-    const targetUrlEl = document.getElementById("targetUrl");
-    const httpCodeEl = document.getElementById("httpCode");
-    const lastCheckedEl = document.getElementById("lastChecked");
-    const statusChipEl = document.getElementById("statusChip");
-    const statusLedEl = document.getElementById("statusLed");
-    const statusTextEl = document.getElementById("statusText");
-    const headlineEl = document.getElementById("headline");
+let historyStates = [];
 
-    const snapStatusEl = document.getElementById("snapStatus");
-    const snapEmojiEl = document.getElementById("snapEmoji");
-    const snapSlackEl = document.getElementById("snapSlack");
+function updateSparkline(state){
+  historyStates.push(state);
+  if(historyStates.length > 30) historyStates.shift();
 
-    const refreshBtn = document.getElementById("refreshBtn");
-    const sparkLine = document.getElementById("sparkLine");
+  const ups = historyStates.filter(s=>s==="up").length;
+  const downs = historyStates.filter(s=>s==="down").length;
+  sparkLabel.textContent = `Last ${historyStates.length} checks | UP:${ups} DOWN:${downs}`;
 
-    let historyStates = []; // "up"/"down"/"unknown"
+  if(state==="down"){
+    sparkLine.style.background = "linear-gradient(90deg,#ef4444,#fca5a5)";
+    sparkLine.style.boxShadow = "0 0 12px rgba(248,113,113,1)";
+    sparkLine.style.top = "55px";
+  } else if(state==="up"){
+    sparkLine.style.background = "linear-gradient(90deg,#22c55e,#4ade80)";
+    sparkLine.style.boxShadow = "0 0 12px rgba(34,197,94,1)";
+    sparkLine.style.top = "15px";
+  } else {
+    sparkLine.style.background = "linear-gradient(90deg,#3b82f6,#93c5fd)";
+    sparkLine.style.boxShadow = "0 0 12px rgba(147,197,253,1)";
+    sparkLine.style.top = "35px";
+  }
+}
 
-    function updateSparkline(state) {
-      historyStates.push(state);
-      if (historyStates.length > 30) historyStates.shift();
+async function loadStatus(){
+  try{
+    const res = await fetch("status.json?_="+Date.now());
+    const data = await res.json();
 
-      const ups = historyStates.filter(s => s === "up").length;
-      const downs = historyStates.filter(s => s === "down").length;
-      sparkLabel.textContent = `Last ${historyStates.length} checks — UP: ${ups}, DOWN: ${downs}`;
-    }
+    const state = data.status?.toLowerCase() || "unknown";
 
-    async function loadStatus() {
-      try {
-        const res = await fetch("status.json?_=" + Date.now());
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
+    targetUrlEl.textContent = data.siteUrl || "—";
+    httpCodeEl.textContent = data.httpCode || "—";
+    lastCheckedEl.textContent = data.checkedAt || "—";
 
-        const state = (data.status || "unknown").toLowerCase();
-        const siteUrl = data.siteUrl || "—";
-        const httpCode = data.httpCode || "—";
-        const checkedAt = data.checkedAt || "—";
-        const emoji = data.emoji || "";
-        const slackMsg = data.slackMessage || "";
+    statusLedEl.classList.toggle("down", state==="down");
+    statusTextEl.textContent = state.toUpperCase();
 
-        targetUrlEl.textContent = siteUrl;
-        httpCodeEl.textContent = httpCode;
-        lastCheckedEl.textContent = checkedAt;
+    headlineEl.textContent = state==="up" ? "All systems operational"
+                          : state==="down" ? "Website DOWN detected"
+                          : "Unknown status";
 
-        // Status chip + headline
-        statusChipEl.classList.remove("down");
-        statusLedEl.classList.remove("down");
+    snapStatusEl.textContent = state.toUpperCase();
+    snapEmojiEl.textContent = data.emoji || "—";
+    snapSlackEl.textContent = data.slackMessage || `${state} | HTTP ${data.httpCode}`;
 
-        if (state === "up") {
-          statusTextEl.textContent = "UP";
-          headlineEl.textContent = "All systems operational (from latest GitHub Action check)";
-        } else if (state === "down") {
-          statusChipEl.classList.add("down");
-          statusLedEl.classList.add("down");
-          statusTextEl.textContent = "DOWN";
-          headlineEl.textContent = "Potential downtime detected (from latest check)";
-        } else {
-          statusTextEl.textContent = "UNKNOWN";
-          headlineEl.textContent = "Unknown status (status.json does not have a valid state)";
-        }
+    updateSparkline(state);
 
-        // Snapshot
-        snapStatusEl.textContent = state.toUpperCase();
-        snapEmojiEl.textContent = emoji || (state === "up" ? "✅" : state === "down" ? "🚨" : "❔");
-        snapSlackEl.textContent = slackMsg
-          ? slackMsg.slice(0, 140)
-          : `${state.toUpperCase()} • HTTP ${httpCode} • ${checkedAt}`;
+  } catch(e){
+    statusTextEl.textContent = "ERROR";
+    headlineEl.textContent = "Could not load status.json";
+  }
+}
 
-        // Sparkline text info
-        updateSparkline(state);
-      } catch (err) {
-        targetUrlEl.textContent = "—";
-        httpCodeEl.textContent = "—";
-        lastCheckedEl.textContent = "—";
-        statusTextEl.textContent = "UNKNOWN";
-        headlineEl.textContent = "Unable to load status.json (check GitHub Pages / repo root)";
-        snapStatusEl.textContent = "—";
-        snapEmojiEl.textContent = "❔";
-        snapSlackEl.textContent = "No data (status.json not found or invalid).";
-        updateSparkline("unknown");
-      }
-    }
-
-    refreshBtn.addEventListener("click", loadStatus);
-
-    // First load
-    loadStatus();
-    // Auto refresh every 2 seconds
-    setInterval(loadStatus, 2000);
-  </script>
+refreshBtn.onclick = loadStatus;
+loadStatus();
+setInterval(loadStatus,2000);
+</script>
 </body>
 </html>
