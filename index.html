@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Website Uptime Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, #151c3b, #050816);
+      color: #f9fafb;
+      padding: 20px;
+    }
+
+    .dashboard {
+      width: 100%;
+      max-width: 900px;
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 24px;
+      padding: 24px 24px 20px;
+      box-shadow:
+        0 18px 45px rgba(15, 23, 42, 0.8),
+        0 0 0 1px rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .title-block h1 {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.1);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .title-block p {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .url-input {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .url-input span {
+      font-size: 11px;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    .url-input input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e5e7eb;
+      font-size: 12px;
+      min-width: 180px;
+    }
+
+    .button {
+      border-radius: 999px;
+      border: none;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.1s ease;
+      white-space: nowrap;
+    }
+
+    .button-primary {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+      box-shadow: 0 8px 18px rgba(34, 197, 94, 0.45);
+    }
+
+    .button-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(34, 197, 94, 0.6);
+    }
+
+    .button-ghost {
+      background: rgba(15, 23, 42, 0.8);
+      color: #e5e7eb;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+    }
+
+    .button-ghost:hover {
+      background: rgba(30, 64, 175, 0.7);
+      border-color: rgba(129, 140, 248, 0.9);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.2fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 720px) {
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .controls {
+        justify-content: flex-start;
+      }
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.8);
+      border-radius: 18px;
+      border: 1px solid rgba(55, 65, 81, 0.8);
+      padding: 16px 16px 14px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .status-pill span.dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+    }
+
+    .status-pill.up {
+      background: rgba(22, 163, 74, 0.12);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.6);
+    }
+
+    .status-pill.up .dot {
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.3);
+    }
+
+    .status-pill.down {
+      background: rgba(248, 113, 113, 0.12);
+      color: #fca5a5;
+      border: 1px solid rgba(248, 113, 113, 0.6);
+    }
+
+    .status-pill.down .dot {
+      background: #ef4444;
+      box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.35);
+    }
+
+    .status-pill.checking {
+      background: rgba(59, 130, 246, 0.08);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.6);
+    }
+
+    .status-pill.checking .dot {
+      background: #60a5fa;
+      box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.35);
+    }
+
+    .status-main {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .status-main h2 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+    }
+
+    .status-main p {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .metric {
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 12px;
+      padding: 8px 10px;
+      border: 1px solid rgba(55, 65, 81, 0.8);
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 2px;
+    }
+
+    .metric-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 1px;
+    }
+
+    .timeline {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 10px;
+    }
+
+    .history-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px dashed rgba(55, 65, 81, 0.9);
+    }
+
+    .history-item span.label {
+      color: #9ca3af;
+    }
+
+    .history-item span.value {
+      color: #e5e7eb;
+      font-weight: 500;
+    }
+
+    .history-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      color: #9ca3af;
+    }
+
+    .footer {
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    .dot-blink {
+      animation: blink 1.1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <div class="header">
+      <div class="title-block">
+        <h1>
+          Uptime Monitor
+          <span class="title-pill">Live Status</span>
+        </h1>
+        <p>Simple dashboard to check if your website is UP or DOWN in real time.</p>
+      </div>
+
+      <div class="controls">
+        <div class="url-input">
+          <span>URL</span>
+          <input id="urlInput" type="text" value="https://example.com" />
+        </div>
+        <button class="button button-ghost" id="setUrlBtn">
+          ⏎ Apply URL
+        </button>
+        <button class="button button-primary" id="checkNowBtn">
+          🔄 Check Now
+        </button>
+      </div>
+    </div>
+
+    <div class="status-grid">
+      <!-- Main status card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Current Status</div>
+          <div id="statusPill" class="status-pill checking">
+            <span class="dot dot-blink"></span>
+            <span id="statusText">Checking…</span>
+          </div>
+        </div>
+
+        <div class="status-main">
+          <div>
+            <h2 id="statusHeadline">—</h2>
+            <p id="statusDescription">Waiting for first check…</p>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">HTTP Status</div>
+            <div id="metricHttp" class="metric-value">—</div>
+            <div class="metric-sub">Raw response code</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Response Time</div>
+            <div id="metricTime" class="metric-value">—</div>
+            <div class="metric-sub">Approx. ms (browser)</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-label">Last Checked</div>
+            <div id="metricChecked" class="metric-value">—</div>
+            <div class="metric-sub">Local time</div>
+          </div>
+        </div>
+
+        <div class="timeline" id="timelineNote">
+          Auto-check interval: every <strong>60 seconds</strong>.
+        </div>
+      </div>
+
+      <!-- Sidebar / mini history -->
+      <div class="card history-card">
+        <div class="card-header">
+          <div class="card-title">Snapshot</div>
+          <span class="history-badge" id="envLabel">Browser Check</span>
+        </div>
+
+        <div class="history-item">
+          <span class="label">Active URL</span>
+          <span class="value" id="activeUrlLabel">https://example.com</span>
+        </div>
+
+        <div class="history-item">
+          <span class="label">Last Result</span>
+          <span class="value" id="lastResultLabel">—</span>
+        </div>
+
+        <div class="history-item">
+          <span class="label">Last Change</span>
+          <span class="value" id="lastChangeLabel">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Note: This dashboard checks directly from your browser. Some sites with strict CORS / firewall rules might appear as DOWN even if they are up.</span>
+      <span>Made for your KT / Uptime demo ⚡</span>
+    </div>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById("urlInput");
+    const setUrlBtn = document.getElementById("setUrlBtn");
+    const checkNowBtn = document.getElementById("checkNowBtn");
+
+    const statusPill = document.getElementById("statusPill");
+    const statusText = document.getElementById("statusText");
+    const statusHeadline = document.getElementById("statusHeadline");
+    const statusDescription = document.getElementById("statusDescription");
+
+    const metricHttp = document.getElementById("metricHttp");
+    const metricTime = document.getElementById("metricTime");
+    const metricChecked = document.getElementById("metricChecked");
+
+    const activeUrlLabel = document.getElementById("activeUrlLabel");
+    const lastResultLabel = document.getElementById("lastResultLabel");
+    const lastChangeLabel = document.getElementById("lastChangeLabel");
+
+    let currentUrl = urlInput.value.trim();
+    let lastKnownState = null;
+    let lastChangeTime = null;
+
+    function formatTime(date) {
+      return date.toLocaleString(undefined, {
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    function setStatusPill(state) {
+      statusPill.classList.remove("up", "down", "checking");
+      const dot = statusPill.querySelector(".dot");
+      dot.classList.remove("dot-blink");
+
+      if (state === "checking") {
+        statusPill.classList.add("checking");
+        statusText.textContent = "Checking…";
+        dot.classList.add("dot-blink");
+      } else if (state === "up") {
+        statusPill.classList.add("up");
+        statusText.textContent = "UP";
+      } else if (state === "down") {
+        statusPill.classList.add("down");
+        statusText.textContent = "DOWN";
+      }
+    }
+
+    async function checkWebsite() {
+      const url = currentUrl;
+      if (!url) return;
+
+      setStatusPill("checking");
+      statusHeadline.textContent = "Checking…";
+      statusDescription.textContent = "Sending test request from your browser.";
+      metricHttp.textContent = "—";
+      metricTime.textContent = "—";
+
+      const start = performance.now();
+      let state = "down";
+      let httpCode = "—";
+
+      try {
+        // IMPORTANT:
+        // Many sites block cross-origin status, so we use no-cors mode.
+        // If fetch resolves => we assume site is UP.
+        const response = await fetch(url, {
+          method: "GET",
+          mode: "no-cors",
+          cache: "no-cache"
+        });
+        const end = performance.now();
+        const duration = Math.round(end - start);
+
+        state = "up";
+        httpCode = "(no-cors)";
+
+        updateUI(state, httpCode, duration);
+      } catch (error) {
+        const end = performance.now();
+        const duration = Math.round(end - start);
+        state = "down";
+        httpCode = "ERR";
+        updateUI(state, httpCode, duration, error);
+      }
+    }
+
+    function updateUI(state, httpCode, duration, error) {
+      const now = new Date();
+      const nowStr = formatTime(now);
+
+      setStatusPill(state);
+      metricHttp.textContent = httpCode;
+      metricTime.textContent = duration + " ms";
+      metricChecked.textContent = nowStr;
+
+      if (state === "up") {
+        statusHeadline.textContent = "All Good";
+        statusDescription.textContent = "Website responded successfully from this browser.";
+      } else {
+        statusHeadline.textContent = "Site May Be Down";
+        statusDescription.textContent = "Request failed from this browser. It could be real downtime or a firewall / CORS block.";
+      }
+
+      const previousState = lastKnownState;
+      lastKnownState = state;
+
+      if (!lastChangeTime || previousState !== state) {
+        lastChangeTime = now;
+      }
+
+      lastResultLabel.textContent = state === "up" ? "UP" : "DOWN";
+      lastChangeLabel.textContent = lastChangeTime ? formatTime(lastChangeTime) : "—";
+    }
+
+    // Apply URL button
+    setUrlBtn.addEventListener("click", () => {
+      const value = urlInput.value.trim();
+      if (!value) return;
+      currentUrl = value;
+      activeUrlLabel.textContent = currentUrl;
+      lastKnownState = null;
+      lastChangeTime = null;
+      lastResultLabel.textContent = "—";
+      lastChangeLabel.textContent = "—";
+      checkWebsite();
+    });
+
+    // Check Now button
+    checkNowBtn.addEventListener("click", () => {
+      checkWebsite();
+    });
+
+    // Hit Enter in input to apply URL
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        setUrlBtn.click();
+      }
+    });
+
+    // Initial setup
+    activeUrlLabel.textContent = currentUrl;
+    checkWebsite();
+
+    // Auto refresh every 60 seconds
+    setInterval(checkWebsite, 60000);
+  </script>
+</body>
+</html>
