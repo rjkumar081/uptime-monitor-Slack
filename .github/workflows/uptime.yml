@@ -12,7 +12,7 @@ jobs:
     steps:
     - name: Check Website Status and Notify Slack
       run: |
-        SITE_URL="https://example.com"
+        SITE_URL="https://cinepolis.com/in"
 
         # Browser jaisa User-Agent use karo, taaki bot block na ho
         STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
