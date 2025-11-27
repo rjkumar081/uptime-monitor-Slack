@@ -39,10 +39,12 @@ jobs:
             LAST_STATUS="$STATUS"
             echo "Attempt $i => HTTP $STATUS"
 
-            # ⬇️ YAHAN SIRF YE 1 LINE CHANGE KI:
-            # pehle:  if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
-            # ab:     4xx + 5xx + 000 => fail
-            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 400 ]; then
+            # ❗ Yahan pehle tumne -ge 400 kiya tha, isse 403 ko bhi DOWN maan raha tha
+            # Ab standard rule:
+            #  - 2xx, 3xx   => OK
+            #  - 000, 5xx   => FAIL
+            #  - 404 (optional) => FAIL
+            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ] || [ "$STATUS" -eq 404 ]; then
               FAIL_COUNT=$((FAIL_COUNT+1))
             fi
 
@@ -58,11 +60,20 @@ jobs:
           if [ "$FAIL_COUNT" -ge 3 ]; then
             STATE_TEXT="down"
             EMOJI="🚨"
-            MESSAGE="🚨 Website DOWN (confirmed)\nURL: $SITE_URL\nLast HTTP: $LAST_STATUS\nFails: $FAIL_COUNT / $ATTEMPTS\nTime: $TIMESTAMP"
+            MESSAGE="🚨 Website DOWN (confirmed)
+URL: $SITE_URL
+Last HTTP: $LAST_STATUS
+Fails: $FAIL_COUNT / $ATTEMPTS
+Time: $TIMESTAMP"
           else
             STATE_TEXT="up"
             EMOJI="✅"
-            MESSAGE="✅ Website UP (stable)\nURL: $SITE_URL\nLast HTTP: $LAST_STATUS\nFails: $FAIL_COUNT / $ATTEMPTS\nTime: $TIMESTAMP"
+            # Yahan HTTP code clearly dikh raha hai, chahe 200 ho, 301 ho ya 403
+            MESSAGE="✅ Website UP (stable from monitor)
+URL: $SITE_URL
+Last HTTP: $LAST_STATUS
+Fails: $FAIL_COUNT / $ATTEMPTS
+Time: $TIMESTAMP"
           fi
 
           # ---- Slack Alert (same style as tumhara original) ----
