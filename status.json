@@ -1,7 +1,7 @@
 {
   "siteUrl": "https://cinepolis.com/in",
-  "status": "up",
-  "httpCode": "200",
-  "checkedAt": "2025-11-27 11:18:28",
-  "emoji": "✅"
+  "status": "down",
+  "httpCode": "403",
+  "checkedAt": "2025-11-27 11:28:35",
+  "emoji": "🚨"
 }
