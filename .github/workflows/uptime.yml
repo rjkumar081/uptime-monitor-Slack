@@ -9,13 +9,13 @@ jobs:
   check-website:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # status.json commit karne ke liye
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Ultra Stable Website Check + Slack + status.json
+      - name: Check Website Status, Notify Slack & Update status.json
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
@@ -26,7 +26,7 @@ jobs:
           FAIL_COUNT=0
           LAST_STATUS="000"
 
-          echo "Ultra stable check started..."
+          echo "Ultra-stable check for $SITE_URL at $TIMESTAMP"
 
           for i in $(seq 1 $ATTEMPTS); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -34,60 +34,45 @@ jobs:
               --max-time 25 \
               --retry 2 \
               --retry-delay 5 \
-              --retry-connrefused \
               "$SITE_URL" || echo "000")
 
             LAST_STATUS="$STATUS"
             echo "Attempt $i => HTTP $STATUS"
 
+            # Sirf real failure count karo: network fail (000) ya 5xx
             if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
               FAIL_COUNT=$((FAIL_COUNT+1))
             fi
 
-            [ "$i" -lt "$ATTEMPTS" ] && sleep 5
+            # Last attempt ke baad sleep ki zaroorat nahi
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              sleep 5
+            fi
           done
 
-          echo "Failures: $FAIL_COUNT / $ATTEMPTS"
+          echo "Total failures: $FAIL_COUNT / $ATTEMPTS"
 
-          CURRENT_STATE="up"
-          EMOJI="✅"
-          STATUS_LABEL="UP (stable)"
-
+          # Default: UP
           if [ "$FAIL_COUNT" -ge 3 ]; then
-            CURRENT_STATE="down"
+            STATE_TEXT="down"
             EMOJI="🚨"
-            STATUS_LABEL="DOWN (confirmed)"
-          fi
-
-          # Read previous state
-          PREVIOUS_STATE="unknown"
-          if [ -f status.json ]; then
-            PREVIOUS_STATE=$(grep -o '"status":[[:space:]]*"[^"]*"' status.json | sed 's/.*"status":[[:space:]]*"\([^"]*\)".*/\1/' || echo "unknown")
-          fi
-
-          echo "Previous: $PREVIOUS_STATE | Current: $CURRENT_STATE"
-
-          # Send Slack only on state change
-          if [ "$PREVIOUS_STATE" != "$CURRENT_STATE" ]; then
-            MESSAGE="$EMOJI Website ${CURRENT_STATE^^}
-URL: $SITE_URL
-Status: $STATUS_LABEL
-Last HTTP: $LAST_STATUS
-Fails: $FAIL_COUNT / $ATTEMPTS
-Time: $TIMESTAMP"
-
-            curl -X POST -H "Content-type: application/json" \
-              --data "{\"text\":\"$MESSAGE\"}" \
-              "$SLACK_WEBHOOK_URL"
+            MESSAGE="🚨 Website DOWN (confirmed)\nURL: $SITE_URL\nLast HTTP: $LAST_STATUS\nFails: $FAIL_COUNT / $ATTEMPTS\nTime: $TIMESTAMP"
           else
-            echo "State unchanged. Slack alert skipped."
+            STATE_TEXT="up"
+            EMOJI="✅"
+            MESSAGE="✅ Website UP (stable)\nURL: $SITE_URL\nLast HTTP: $LAST_STATUS\nFails: $FAIL_COUNT / $ATTEMPTS\nTime: $TIMESTAMP"
           fi
 
-          # Generate status.json
+          # ---- Slack Alert (same style as tumhara original) ----
+          curl -X POST -H "Content-type: application/json" \
+            --data "{\"text\":\"$MESSAGE\"}" \
+            "$SLACK_WEBHOOK_URL"
+
+          # ---- status.json generate (dashboard ke liye) ----
           printf '%s\n' \
             "{" \
             "  \"siteUrl\": \"$SITE_URL\"," \
-            "  \"status\": \"$CURRENT_STATE\"," \
+            "  \"status\": \"$STATE_TEXT\"," \
             "  \"httpCode\": \"$LAST_STATUS\"," \
             "  \"checkedAt\": \"$TIMESTAMP\"," \
             "  \"emoji\": \"$EMOJI\"," \
