@@ -9,7 +9,7 @@ jobs:
   check-website:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # status.json commit karne ke liye
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -19,76 +19,80 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          SITE_URL="https://cinepolis.com/in"
+          DISPLAY_NAME="Cinepolis India"
+          SITE_URL="https://cinepolis.com/uptime-health"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
           ATTEMPTS=5
           FAIL_COUNT=0
           LAST_STATUS="000"
+          HAS_403=0
 
-          echo "Ultra-stable check for $SITE_URL at $TIMESTAMP"
+          echo "Ultra Stable Monitor Started for $DISPLAY_NAME"
 
           for i in $(seq 1 $ATTEMPTS); do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-              --max-time 25 \
-              --retry 2 \
-              --retry-delay 5 \
+            STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" \
+              --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36" \
+              --max-time 20 \
+              --retry 1 \
+              --retry-delay 2 \
               "$SITE_URL" || echo "000")
 
             LAST_STATUS="$STATUS"
-            echo "Attempt $i => HTTP $STATUS"
+            echo "Attempt $i -> HTTP $STATUS"
 
-            # ❗ Yahan pehle tumne -ge 400 kiya tha, isse 403 ko bhi DOWN maan raha tha
-            # Ab standard rule:
-            #  - 2xx, 3xx   => OK
-            #  - 000, 5xx   => FAIL
-            #  - 404 (optional) => FAIL
-            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ] || [ "$STATUS" -eq 404 ]; then
+            # 403 ko real DOWN mat mano (Cloudflare protection)
+            if [ "$STATUS" = "403" ]; then
+              HAS_403=1
+            fi
+
+            # Real failure logic
+            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
               FAIL_COUNT=$((FAIL_COUNT+1))
             fi
 
-            # Last attempt ke baad sleep ki zaroorat nahi
-            if [ "$i" -lt "$ATTEMPTS" ]; then
-              sleep 5
-            fi
+            [ "$i" -lt "$ATTEMPTS" ] && sleep 3
           done
 
-          echo "Total failures: $FAIL_COUNT / $ATTEMPTS"
+          # Final Decision
+          STATE_TEXT="up"
+          EMOJI="✅"
+          STATUS_NOTE="UP (stable)"
 
-          # Default: UP
           if [ "$FAIL_COUNT" -ge 3 ]; then
             STATE_TEXT="down"
             EMOJI="🚨"
-            MESSAGE="🚨 Website DOWN (confirmed)
-URL: $SITE_URL
-Last HTTP: $LAST_STATUS
-Fails: $FAIL_COUNT / $ATTEMPTS
-Time: $TIMESTAMP"
-          else
+            STATUS_NOTE="DOWN (confirmed)"
+          elif [ "$HAS_403" -eq 1 ]; then
             STATE_TEXT="up"
-            EMOJI="✅"
-            # Yahan HTTP code clearly dikh raha hai, chahe 200 ho, 301 ho ya 403
-            MESSAGE="✅ Website UP (stable from monitor)
-URL: $SITE_URL
-Last HTTP: $LAST_STATUS
-Fails: $FAIL_COUNT / $ATTEMPTS
-Time: $TIMESTAMP"
+            EMOJI="🟡"
+            STATUS_NOTE="UP but restricted for monitoring"
           fi
 
-          # ---- Slack Alert (same style as tumhara original) ----
+          MESSAGE="$EMOJI $DISPLAY_NAME Status
+$STATUS_NOTE
+URL: https://cinepolis.com/in
+Backend: $SITE_URL
+HTTP Code: $LAST_STATUS
+Fails: $FAIL_COUNT / $ATTEMPTS
+Time: $TIMESTAMP"
+
+          # Slack Notification
           curl -X POST -H "Content-type: application/json" \
             --data "{\"text\":\"$MESSAGE\"}" \
             "$SLACK_WEBHOOK_URL"
 
-          # ---- status.json generate (dashboard ke liye) ----
+          # status.json for dashboard (live UI)
           printf '%s\n' \
             "{" \
-            "  \"siteUrl\": \"$SITE_URL\"," \
+            "  \"siteName\": \"$DISPLAY_NAME\"," \
+            "  \"siteUrl\": \"https://cinepolis.com/in\"," \
+            "  \"backendUrl\": \"$SITE_URL\"," \
             "  \"status\": \"$STATE_TEXT\"," \
             "  \"httpCode\": \"$LAST_STATUS\"," \
             "  \"checkedAt\": \"$TIMESTAMP\"," \
             "  \"emoji\": \"$EMOJI\"," \
+            "  \"note\": \"$STATUS_NOTE\"," \
             "  \"fails\": $FAIL_COUNT," \
             "  \"attempts\": $ATTEMPTS" \
             "}" > status.json
@@ -99,8 +103,8 @@ Time: $TIMESTAMP"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add status.json
           if git diff --cached --quiet; then
-            echo "No changes in status.json"
+            echo "No change"
           else
-            git commit -m "Update status.json"
+            git commit -m "Ultra stable status update"
             git push
           fi
