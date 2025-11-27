@@ -22,12 +22,12 @@ jobs:
           SITE_URL="https://cinepolis.com/in"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
-          # 2–3 baar ping = 3 attempts, 2 fail hone par DOWN
+          # 🔁 3 attempts (2–3 ping check)
           ATTEMPTS=3
           FAIL_COUNT=0
           LAST_STATUS="000"
 
-          echo "Standard HTTP check for $SITE_URL at $TIMESTAMP"
+          echo "Standard check for $SITE_URL at $TIMESTAMP"
 
           for i in $(seq 1 $ATTEMPTS); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -40,7 +40,9 @@ jobs:
             LAST_STATUS="$STATUS"
             echo "Attempt $i => HTTP $STATUS"
 
-            # ✅ Standard: 2xx/3xx = UP, 4xx/5xx/000 = DOWN
+            # ✅ Standard rule:
+            # 2xx / 3xx  -> UP
+            # 4xx / 5xx / 000 -> DOWN
             if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 400 ]; then
               FAIL_COUNT=$((FAIL_COUNT+1))
             fi
@@ -52,7 +54,7 @@ jobs:
 
           echo "Total failures: $FAIL_COUNT / $ATTEMPTS"
 
-          # Default: UP, 2 ya 3 fail hone par DOWN
+          # Default: UP, agar 3 me se 2 ya 3 fail -> DOWN
           if [ "$FAIL_COUNT" -ge 2 ]; then
             STATE_TEXT="down"
             EMOJI="🚨"
