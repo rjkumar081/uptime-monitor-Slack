@@ -9,47 +9,90 @@ jobs:
   check-website:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # status.json commit karne ke liye
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check Website Status, Notify Slack & Update status.json
+      - name: Ultra Stable Website Check + Slack + status.json
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           SITE_URL="https://cinepolis.com/in"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-            --max-time 15 \
-            "$SITE_URL")
+          ATTEMPTS=5
+          FAIL_COUNT=0
+          LAST_STATUS="000"
 
-          if [ "$STATUS" = "000" ] || [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 300 ]; then
-            STATE_TEXT="down"
+          echo "Ultra stable check started..."
+
+          for i in $(seq 1 $ATTEMPTS); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+              --max-time 25 \
+              --retry 2 \
+              --retry-delay 5 \
+              --retry-connrefused \
+              "$SITE_URL" || echo "000")
+
+            LAST_STATUS="$STATUS"
+            echo "Attempt $i => HTTP $STATUS"
+
+            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
+              FAIL_COUNT=$((FAIL_COUNT+1))
+            fi
+
+            [ "$i" -lt "$ATTEMPTS" ] && sleep 5
+          done
+
+          echo "Failures: $FAIL_COUNT / $ATTEMPTS"
+
+          CURRENT_STATE="up"
+          EMOJI="✅"
+          STATUS_LABEL="UP (stable)"
+
+          if [ "$FAIL_COUNT" -ge 3 ]; then
+            CURRENT_STATE="down"
             EMOJI="🚨"
-            MESSAGE="🚨 Website DOWN\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
-          else
-            STATE_TEXT="up"
-            EMOJI="✅"
-            MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $STATUS\nTime: $TIMESTAMP"
+            STATUS_LABEL="DOWN (confirmed)"
           fi
 
-          # ---- Slack Alert (tumhara original logic) ----
-          curl -X POST -H "Content-type: application/json" \
-            --data "{\"text\":\"$MESSAGE\"}" \
-            "$SLACK_WEBHOOK_URL"
+          # Read previous state
+          PREVIOUS_STATE="unknown"
+          if [ -f status.json ]; then
+            PREVIOUS_STATE=$(grep -o '"status":[[:space:]]*"[^"]*"' status.json | sed 's/.*"status":[[:space:]]*"\([^"]*\)".*/\1/' || echo "unknown")
+          fi
 
-          # ---- status.json generate (NO heredoc, NO YAML error) ----
+          echo "Previous: $PREVIOUS_STATE | Current: $CURRENT_STATE"
+
+          # Send Slack only on state change
+          if [ "$PREVIOUS_STATE" != "$CURRENT_STATE" ]; then
+            MESSAGE="$EMOJI Website ${CURRENT_STATE^^}
+URL: $SITE_URL
+Status: $STATUS_LABEL
+Last HTTP: $LAST_STATUS
+Fails: $FAIL_COUNT / $ATTEMPTS
+Time: $TIMESTAMP"
+
+            curl -X POST -H "Content-type: application/json" \
+              --data "{\"text\":\"$MESSAGE\"}" \
+              "$SLACK_WEBHOOK_URL"
+          else
+            echo "State unchanged. Slack alert skipped."
+          fi
+
+          # Generate status.json
           printf '%s\n' \
             "{" \
             "  \"siteUrl\": \"$SITE_URL\"," \
-            "  \"status\": \"$STATE_TEXT\"," \
-            "  \"httpCode\": \"$STATUS\"," \
+            "  \"status\": \"$CURRENT_STATE\"," \
+            "  \"httpCode\": \"$LAST_STATUS\"," \
             "  \"checkedAt\": \"$TIMESTAMP\"," \
-            "  \"emoji\": \"$EMOJI\"" \
+            "  \"emoji\": \"$EMOJI\"," \
+            "  \"fails\": $FAIL_COUNT," \
+            "  \"attempts\": $ATTEMPTS" \
             "}" > status.json
 
       - name: Commit status.json
