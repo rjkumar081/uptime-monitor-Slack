@@ -9,7 +9,7 @@ jobs:
   check-website:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # status.json commit karne ke liye
 
     steps:
       - name: Checkout repository
@@ -19,83 +19,59 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          set +e
-
-          DISPLAY_NAME="Cinepolis India"
-          SITE_URL="https://cinepolis.com/uptime-health"
-          PUBLIC_URL="https://cinepolis.com/in"
+          SITE_URL="https://cinepolis.com/in"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
-          ATTEMPTS=5
-          FAIL_COUNT=0
+          ATTEMPTS=3
+          FAILS=0
           LAST_STATUS="000"
-          HAS_403=0
 
-          echo "Ultra Stable Monitor Started for $DISPLAY_NAME"
+          echo "Checking $SITE_URL at $TIMESTAMP"
 
-          for i in 1 2 3 4 5; do
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              --user-agent "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+              --max-time 15 \
+              "$SITE_URL" || echo "000")
 
-            STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" \
-              --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36" \
-              --max-time 20 \
-              "$SITE_URL")
-
-            [ -z "$STATUS" ] && STATUS="000"
             LAST_STATUS="$STATUS"
-
             echo "Attempt $i => HTTP $STATUS"
 
-            if [ "$STATUS" = "403" ]; then
-              HAS_403=1
+            # 2xx–3xx = OK, baaki fail
+            if [ "$STATUS" = "000" ] || [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 400 ]; then
+              FAILS=$((FAILS+1))
             fi
 
-            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
-              FAIL_COUNT=$((FAIL_COUNT+1))
+            if [ "$i" -lt "$ATTEMPTS" ]; then
+              sleep 5
             fi
-
-            sleep 3
           done
 
-          STATE_TEXT="up"
-          EMOJI="✅"
-          NOTE="UP (stable)"
-
-          if [ "$FAIL_COUNT" -ge 3 ]; then
+          if [ "$FAILS" -ge 2 ]; then
             STATE_TEXT="down"
             EMOJI="🚨"
-            NOTE="DOWN (confirmed)"
-          elif [ "$HAS_403" -eq 1 ]; then
-            EMOJI="🟡"
-            NOTE="UP but Cloudflare restricted"
+            MESSAGE="🚨 Website DOWN\nURL: $SITE_URL\nStatus: HTTP $LAST_STATUS\nFails: $FAILS/$ATTEMPTS\nTime: $TIMESTAMP"
+          else
+            STATE_TEXT="up"
+            EMOJI="✅"
+            MESSAGE="✅ Website UP\nURL: $SITE_URL\nStatus: HTTP $LAST_STATUS\nFails: $FAILS/$ATTEMPTS\nTime: $TIMESTAMP"
           fi
 
-          MESSAGE="$EMOJI $DISPLAY_NAME Status
-
-$NOTE
-Public URL: $PUBLIC_URL
-Backend URL: $SITE_URL
-HTTP Code: $LAST_STATUS
-Fails: $FAIL_COUNT / $ATTEMPTS
-Time: $TIMESTAMP"
-
-          # Slack send (safe)
           curl -X POST -H "Content-type: application/json" \
-            --data "{\"text\":\"$(echo "$MESSAGE" | sed 's/"/\\"/g')\"}" \
+            --data "{\"text\":\"$MESSAGE\"}" \
             "$SLACK_WEBHOOK_URL"
 
-          # Create status.json
-          echo "{
-            \"siteName\": \"$DISPLAY_NAME\",
-            \"siteUrl\": \"$PUBLIC_URL\",
-            \"backendUrl\": \"$SITE_URL\",
-            \"status\": \"$STATE_TEXT\",
-            \"httpCode\": \"$LAST_STATUS\",
-            \"checkedAt\": \"$TIMESTAMP\",
-            \"emoji\": \"$EMOJI\",
-            \"note\": \"$NOTE\",
-            \"fails\": $FAIL_COUNT,
-            \"attempts\": $ATTEMPTS
-          }" > status.json
+          # status.json for dashboard
+          printf '%s\n' \
+            "{" \
+            "  \"siteUrl\": \"$SITE_URL\"," \
+            "  \"status\": \"$STATE_TEXT\"," \
+            "  \"httpCode\": \"$LAST_STATUS\"," \
+            "  \"checkedAt\": \"$TIMESTAMP\"," \
+            "  \"emoji\": \"$EMOJI\"," \
+            "  \"fails\": $FAILS," \
+            "  \"attempts\": $ATTEMPTS" \
+            "}" > status.json
 
       - name: Commit status.json
         run: |
@@ -103,8 +79,8 @@ Time: $TIMESTAMP"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add status.json
           if git diff --cached --quiet; then
-            echo "No change"
+            echo "No changes in status.json"
           else
-            git commit -m "Stable status update"
+            git commit -m "Update status.json"
             git push
           fi
