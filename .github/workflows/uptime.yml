@@ -19,8 +19,11 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          set +e
+
           DISPLAY_NAME="Cinepolis India"
           SITE_URL="https://cinepolis.com/uptime-health"
+          PUBLIC_URL="https://cinepolis.com/in"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
           ATTEMPTS=5
@@ -30,72 +33,69 @@ jobs:
 
           echo "Ultra Stable Monitor Started for $DISPLAY_NAME"
 
-          for i in $(seq 1 $ATTEMPTS); do
+          for i in 1 2 3 4 5; do
+
             STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" \
               --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36" \
               --max-time 20 \
-              --retry 1 \
-              --retry-delay 2 \
-              "$SITE_URL" || echo "000")
+              "$SITE_URL")
 
+            [ -z "$STATUS" ] && STATUS="000"
             LAST_STATUS="$STATUS"
-            echo "Attempt $i -> HTTP $STATUS"
 
-            # 403 ko real DOWN mat mano (Cloudflare protection)
+            echo "Attempt $i => HTTP $STATUS"
+
             if [ "$STATUS" = "403" ]; then
               HAS_403=1
             fi
 
-            # Real failure logic
             if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
               FAIL_COUNT=$((FAIL_COUNT+1))
             fi
 
-            [ "$i" -lt "$ATTEMPTS" ] && sleep 3
+            sleep 3
           done
 
-          # Final Decision
           STATE_TEXT="up"
           EMOJI="✅"
-          STATUS_NOTE="UP (stable)"
+          NOTE="UP (stable)"
 
           if [ "$FAIL_COUNT" -ge 3 ]; then
             STATE_TEXT="down"
             EMOJI="🚨"
-            STATUS_NOTE="DOWN (confirmed)"
+            NOTE="DOWN (confirmed)"
           elif [ "$HAS_403" -eq 1 ]; then
-            STATE_TEXT="up"
             EMOJI="🟡"
-            STATUS_NOTE="UP but restricted for monitoring"
+            NOTE="UP but Cloudflare restricted"
           fi
 
           MESSAGE="$EMOJI $DISPLAY_NAME Status
-$STATUS_NOTE
-URL: https://cinepolis.com/in
-Backend: $SITE_URL
+
+$NOTE
+Public URL: $PUBLIC_URL
+Backend URL: $SITE_URL
 HTTP Code: $LAST_STATUS
 Fails: $FAIL_COUNT / $ATTEMPTS
 Time: $TIMESTAMP"
 
-          # Slack Notification
+          # Slack send (safe)
           curl -X POST -H "Content-type: application/json" \
-            --data "{\"text\":\"$MESSAGE\"}" \
+            --data "{\"text\":\"$(echo "$MESSAGE" | sed 's/"/\\"/g')\"}" \
             "$SLACK_WEBHOOK_URL"
 
-          # status.json for dashboard (live UI)
-          printf '%s\n' \
-            "{" \
-            "  \"siteName\": \"$DISPLAY_NAME\"," \
-            "  \"siteUrl\": \"https://cinepolis.com/in\"," \
-            "  \"backendUrl\": \"$SITE_URL\"," \
-            "  \"status\": \"$STATE_TEXT\"," \
-            "  \"httpCode\": \"$LAST_STATUS\"," \
-            "  \"checkedAt\": \"$TIMESTAMP\"," \
-            "  \"emoji\": \"$EMOJI\"," \
-            "  \"note\": \"$STATUS_NOTE\"," \
-            "  \"fails\": $FAIL_COUNT," \
-            "  \"attempts\": $ATTEMPTS" \
-            "}" > status.json
+          # Create status.json
+          echo "{
+            \"siteName\": \"$DISPLAY_NAME\",
+            \"siteUrl\": \"$PUBLIC_URL\",
+            \"backendUrl\": \"$SITE_URL\",
+            \"status\": \"$STATE_TEXT\",
+            \"httpCode\": \"$LAST_STATUS\",
+            \"checkedAt\": \"$TIMESTAMP\",
+            \"emoji\": \"$EMOJI\",
+            \"note\": \"$NOTE\",
+            \"fails\": $FAIL_COUNT,
+            \"attempts\": $ATTEMPTS
+          }" > status.json
 
       - name: Commit status.json
         run: |
@@ -105,6 +105,6 @@ Time: $TIMESTAMP"
           if git diff --cached --quiet; then
             echo "No change"
           else
-            git commit -m "Ultra stable status update"
+            git commit -m "Stable status update"
             git push
           fi
