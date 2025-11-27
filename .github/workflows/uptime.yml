@@ -19,7 +19,9 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          SITE_URL="https://cinepolis.com/in"
+          DISPLAY_NAME="Cinepolis India"
+          SITE_URL="https://cinepolis.com/uptime-health"
+          PUBLIC_URL="https://cinepolis.com/in"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
           ATTEMPTS=3
