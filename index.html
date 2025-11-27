@@ -39,6 +39,7 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between; /* 👈 logo right side */
       gap: 10px;
       margin-bottom: 16px;
     }
@@ -69,6 +70,17 @@
       border-radius: 999px;
       background: #22c55e;
       box-shadow: 0 0 10px rgba(34, 197, 94, 0.9);
+    }
+
+    /* 🎬 Cinepolis logo styles */
+    .brand-logo {
+      flex-shrink: 0;
+    }
+    .brand-logo img {
+      height: 46px;
+      object-fit: contain;
+      display: block;
+      filter: drop-shadow(0 6px 18px rgba(0,0,0,0.65));
     }
 
     .subtitle {
@@ -374,6 +386,10 @@
       .sparkline-shell {
         height: 70px;
       }
+
+      .brand-logo img {
+        height: 38px; /* thoda chhota mobile pe */
+      }
     }
   </style>
 </head>
@@ -387,6 +403,12 @@
             <span class="pill-dot"></span>
             GitHub Actions + Slack
           </div>
+        </div>
+
+        <!-- 🎬 Cinepolis logo block -->
+        <div class="brand-logo">
+          <!-- Logo image ko repo me cinepolis-logo.png naam se rakho -->
+          <img src="cinepolis-logo.png" alt="Cinépolis Logo">
         </div>
       </div>
 
