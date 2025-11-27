@@ -22,11 +22,12 @@ jobs:
           SITE_URL="https://cinepolis.com/in"
           TIMESTAMP=$(TZ="Asia/Kolkata" date "+%Y-%m-%d %H:%M:%S")
 
-          ATTEMPTS=5
+          # 2–3 baar ping = 3 attempts, 2 fail hone par DOWN
+          ATTEMPTS=3
           FAIL_COUNT=0
           LAST_STATUS="000"
 
-          echo "Ultra-stable check for $SITE_URL at $TIMESTAMP"
+          echo "Standard HTTP check for $SITE_URL at $TIMESTAMP"
 
           for i in $(seq 1 $ATTEMPTS); do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -39,12 +40,11 @@ jobs:
             LAST_STATUS="$STATUS"
             echo "Attempt $i => HTTP $STATUS"
 
-            # Sirf real failure count karo: network fail (000) ya 5xx
-            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
+            # ✅ Standard: 2xx/3xx = UP, 4xx/5xx/000 = DOWN
+            if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 400 ]; then
               FAIL_COUNT=$((FAIL_COUNT+1))
             fi
 
-            # Last attempt ke baad sleep ki zaroorat nahi
             if [ "$i" -lt "$ATTEMPTS" ]; then
               sleep 5
             fi
@@ -52,18 +52,26 @@ jobs:
 
           echo "Total failures: $FAIL_COUNT / $ATTEMPTS"
 
-          # Default: UP
-          if [ "$FAIL_COUNT" -ge 3 ]; then
+          # Default: UP, 2 ya 3 fail hone par DOWN
+          if [ "$FAIL_COUNT" -ge 2 ]; then
             STATE_TEXT="down"
             EMOJI="🚨"
-            MESSAGE="🚨 Website DOWN (confirmed)\nURL: $SITE_URL\nLast HTTP: $LAST_STATUS\nFails: $FAIL_COUNT / $ATTEMPTS\nTime: $TIMESTAMP"
+            MESSAGE="🚨 Website DOWN (confirmed)
+URL: $SITE_URL
+Last HTTP: $LAST_STATUS
+Fails: $FAIL_COUNT / $ATTEMPTS
+Time: $TIMESTAMP"
           else
             STATE_TEXT="up"
             EMOJI="✅"
-            MESSAGE="✅ Website UP (stable)\nURL: $SITE_URL\nLast HTTP: $LAST_STATUS\nFails: $FAIL_COUNT / $ATTEMPTS\nTime: $TIMESTAMP"
+            MESSAGE="✅ Website UP (stable)
+URL: $SITE_URL
+Last HTTP: $LAST_STATUS
+Fails: $FAIL_COUNT / $ATTEMPTS
+Time: $TIMESTAMP"
           fi
 
-          # ---- Slack Alert (same style as tumhara original) ----
+          # ---- Slack Alert ----
           curl -X POST -H "Content-type: application/json" \
             --data "{\"text\":\"$MESSAGE\"}" \
             "$SLACK_WEBHOOK_URL"
